@@ -3,301 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebStack Compiler IDE</title>
+    <title>Mass Scraper Compiler</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-darker: #121212;
-            --bg-dark: #1e1e1e;
-            --bg-panel: #252526;
-            --accent: #007acc;
-            --accent-hover: #0062a3;
+            --bg-dark: #121212;
+            --bg-panel: #1e1e1e;
             --border: #333;
             --text: #d4d4d4;
-            --terminal-green: #0dbc79;
+            --accent: #ff4757;
+            --terminal-bg: #050505;
         }
 
-        body, html {
-            margin: 0; padding: 0; height: 100%;
-            background: var(--bg-darker); color: var(--text);
-            font-family: 'Segoe UI', sans-serif; overflow: hidden;
-        }
+        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg-dark); color: var(--text); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
 
-        /* --- LAYOUT --- */
-        .ide-container {
-            display: flex; flex-direction: column; height: 100vh;
-        }
+        .header { height: 50px; background: var(--bg-panel); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--border); }
+        .btn-run { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        
+        .container { display: flex; flex: 1; height: calc(100vh - 50px); }
+        .editor-side { flex: 1; display: flex; flex-direction: column; border-right: 2px solid var(--border); }
+        .output-side { flex: 1; display: flex; flex-direction: column; background: #000; }
 
-        /* Top Toolbar */
-        .toolbar {
-            height: 40px; background: var(--bg-panel);
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 15px; border-bottom: 1px solid var(--border);
-        }
-
-        .btn-compile {
-            background: #2ea043; color: white; border: none;
-            padding: 5px 15px; border-radius: 4px; cursor: pointer;
-            font-weight: bold; display: flex; align-items: center; gap: 8px;
-            transition: 0.2s;
-        }
-        .btn-compile:hover { background: #3fb950; }
-
-        /* Main Body */
-        .main-view {
-            display: flex; flex: 1; overflow: hidden;
-        }
-
-        .sidebar {
-            width: 45px; background: #333333; display: flex;
-            flex-direction: column; align-items: center; padding-top: 15px;
-            gap: 20px; color: #858585; border-right: 1px solid var(--border);
-        }
-
-        .editor-zone {
-            flex: 1; display: flex; flex-direction: column;
-            border-right: 1px solid var(--border);
-        }
-
-        .preview-zone {
-            width: 40%; background: white; display: flex; flex-direction: column;
-        }
-
-        /* Terminal / Bottom Panel */
-        .bottom-panel {
-            height: 200px; background: var(--bg-darker);
-            border-top: 1px solid var(--border); display: flex; flex-direction: column;
-        }
-
-        .panel-tabs {
-            background: var(--bg-panel); font-size: 11px;
-            display: flex; gap: 20px; padding: 0 15px; height: 30px;
-            align-items: center; text-transform: uppercase;
-        }
-
-        .terminal-content {
-            flex: 1; overflow-y: auto; padding: 10px;
-            font-family: 'Consolas', monospace; font-size: 13px;
-            color: #ccc; line-height: 1.4;
-        }
-
-        /* Status Colors */
-        .t-success { color: var(--terminal-green); }
-        .t-error { color: #f48771; }
-        .t-info { color: #4fc1ff; }
-        .t-warn { color: #cca700; }
-
-        /* Preview Frame */
-        iframe { flex: 1; border: none; background: white; }
-
-        .status-bar {
-            height: 22px; background: var(--accent);
-            display: flex; align-items: center; padding: 0 12px;
-            font-size: 12px; color: white; justify-content: space-between;
-        }
-
-        /* Compiling Overlay */
-        #compile-overlay {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7); display: none;
-            justify-content: center; align-items: center; z-index: 100;
-            flex-direction: column; gap: 15px;
-        }
-        .spinner {
-            width: 40px; height: 40px; border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--accent); border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #editor-container { flex: 1; }
+        .terminal { height: 300px; background: var(--terminal-bg); color: #0dbc79; font-family: 'Consolas', monospace; font-size: 12px; overflow-y: auto; border-top: 2px solid var(--border); padding: 10px; }
+        .log-entry { margin-bottom: 2px; border-bottom: 1px solid #111; }
+        .log-info { color: #4fc1ff; }
+        .log-error { color: #ff4757; }
+        
+        iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
 
-<div class="ide-container">
-    <div class="toolbar">
-        <div style="font-weight: bold; font-size: 14px;">
-            <i class="fas fa-microchip"></i> Compiler Engine <span style="font-weight: normal; opacity: 0.6;">v1.0.4</span>
-        </div>
-        <button class="btn-compile" onclick="startBuild()">
-            <i class="fas fa-play"></i> BUILD & RUN
-        </button>
+    <div class="header">
+        <div style="font-weight: bold;"><i class="fas fa-bolt" style="color:var(--accent)"></i> MASS SCRAPER ENGINE v2.0</div>
+        <button class="btn-run" onclick="runCode()">RUN COMPILER</button>
     </div>
 
-    <div class="main-view">
-        <div class="sidebar">
-            <i class="fas fa-file-code" style="color: white;"></i>
-            <i class="fas fa-search"></i>
-            <i class="fas fa-bug"></i>
-            <i class="fas fa-box-open"></i>
-        </div>
-
-        <div class="editor-zone">
-            <div style="padding: 10px 15px; background: var(--bg-dark); font-size: 12px; border-bottom: 1px solid var(--border);">
-                index.html <span style="opacity:0.5">— Project: main-app</span>
-            </div>
-            <div id="editor-container" style="flex: 1; position: relative;">
-                <div id="compile-overlay">
-                    <div class="spinner"></div>
-                    <div id="status-text">Compiling assets...</div>
-                </div>
-            </div>
-            
-            <div class="bottom-panel">
-                <div class="panel-tabs">
-                    <span style="border-bottom: 1px solid white; cursor: pointer;">Output</span>
-                    <span style="opacity: 0.5; cursor: pointer;">Problems</span>
-                    <span style="opacity: 0.5; cursor: pointer;">Debug Console</span>
-                </div>
-                <div id="terminal" class="terminal-content">
-                    <div class="t-info">Initializing compiler environment...</div>
-                    <div class="t-success">✓ Compiler Ready.</div>
-                </div>
+    <div class="container">
+        <div class="editor-side">
+            <div id="editor-container"></div>
+            <div class="terminal" id="terminal">
+                <div style="color: #888; margin-bottom: 10px;">-- CONSOLE LOGS --</div>
             </div>
         </div>
-
-        <div class="preview-zone">
-            <div style="padding: 8px; background: #eee; color: #666; font-size: 11px; text-align: center; border-bottom: 1px solid #ddd;">
-                BUILD OUTPUT PREVIEW
-            </div>
-            <iframe id="preview-frame"></iframe>
+        <div class="output-side">
+            <iframe id="preview"></iframe>
         </div>
     </div>
 
-    <div class="status-bar">
-        <div id="problems-stat"><i class="fas fa-times-circle"></i> 0 &nbsp; <i class="fas fa-exclamation-triangle"></i> 0</div>
-        <div>Ln 1, Col 1 &nbsp;&nbsp; UTF-8 &nbsp;&nbsp; HTML/JS</div>
-    </div>
-</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <script>
+        let editor;
+        const terminal = document.getElementById('terminal');
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
-<script>
-    let editor;
-    const terminal = document.getElementById('terminal');
-
-    const codeTemplate = `<!DOCTYPE html>
+        const scraperCode = `<!DOCTYPE html>
 <html>
 <head>
-    <title>My Compiled App</title>
     <style>
-        body { background: #222; color: #fff; text-align: center; font-family: sans-serif; }
-        .box { padding: 50px; border: 2px solid #0dbc79; margin-top: 50px; display: inline-block; border-radius: 10px; }
+        body { background: #000; color: white; font-family: sans-serif; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 5px; padding: 10px; }
+        img { width: 100%; height: 100px; object-fit: cover; border-radius: 4px; border: 1px solid #333; }
+        #stats { position: sticky; top: 0; background: rgba(0,0,0,0.8); padding: 10px; font-size: 20px; color: #ff4757; z-index: 100; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h1 id="title">Build Successful</h1>
-        <p>Check the compiler output below.</p>
-    </div>
+    <div id="stats">Scraped: 0 / 10000</div>
+    <div class="grid" id="gallery"></div>
 
     <script>
-        console.log("Kernel: Initializing application...");
-        setTimeout(() => {
-            console.info("Process: Fetching resources...");
-            document.getElementById('title').style.color = '#0dbc79';
-        }, 1000);
+        const API_URL = "https://api-rebix.vercel.app/api/nsfw/milf";
+        const TOTAL_TARGET = 10000;
+        const BATCH_SIZE = 5; // Fetch 5 at a time to prevent crashing
+        let currentCount = 0;
+
+        async function scrapeBatch() {
+            if (currentCount >= TOTAL_TARGET) {
+                console.log("✅ FINISHED: 10,000 images scraped.");
+                return;
+            }
+
+            const gallery = document.getElementById('gallery');
+            const stats = document.getElementById('stats');
+
+            // Memory Management: Clear gallery every 50 images to keep browser fast
+            if (currentCount % 50 === 0 && currentCount !== 0) {
+                gallery.innerHTML = '';
+            }
+
+            const tasks = [];
+            for (let i = 0; i < BATCH_SIZE; i++) {
+                currentCount++;
+                const attemptNum = currentCount;
+                
+                // Create the fetch task
+                tasks.push(
+                    fetch(API_URL + "?cache_bust=" + attemptNum + "_" + Date.now())
+                        .then(res => res.blob())
+                        .then(blob => {
+                            const url = URL.createObjectURL(blob);
+                            const img = document.createElement('img');
+                            img.src = url;
+                            gallery.appendChild(img);
+                            
+                            // LOG IN REQUESTED FORMAT
+                            console.log("Attempt " + attemptNum + "/10000 scraped");
+                            
+                            stats.innerText = "Scraped: " + attemptNum + " / 10000";
+                        })
+                        .catch(err => console.error("Attempt " + attemptNum + " FAILED"))
+                );
+            }
+
+            await Promise.all(tasks);
+            
+            // Wait 500ms between batches to avoid IP ban/Rate limiting
+            setTimeout(scrapeBatch, 500);
+        }
+
+        // Start automatically
+        console.log("🚀 Starting Auto-Scraper...");
+        scrapeBatch();
     <\/script>
 </body>
 </html>`;
 
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
-
-    require(['vs/editor/editor.main'], function() {
-        editor = monaco.editor.create(document.getElementById('editor-container'), {
-            value: codeTemplate,
-            language: 'html',
-            theme: 'vs-dark',
-            automaticLayout: true,
-            fontSize: 14,
-            minimap: { enabled: false },
-            padding: { top: 10 }
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+            editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: scraperCode,
+                language: 'html',
+                theme: 'vs-dark',
+                automaticLayout: true
+            });
         });
 
-        // Track marker/error changes
-        editor.onDidChangeModelDecorations(() => {
-            const markers = monaco.editor.getModelMarkers({});
-            const errors = markers.filter(m => m.severity === 8).length;
-            const warns = markers.filter(m => m.severity === 4).length;
-            document.getElementById('problems-stat').innerHTML = 
-                `<i class="fas fa-times-circle"></i> ${errors} &nbsp; <i class="fas fa-exclamation-triangle"></i> ${warns}`;
-        });
-    });
-
-    function logTerminal(msg, type = 'info') {
-        const div = document.createElement('div');
-        div.className = `t-${type}`;
-        div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
-        terminal.appendChild(div);
-        terminal.scrollTop = terminal.scrollHeight;
-    }
-
-    function startBuild() {
-        const overlay = document.getElementById('compile-overlay');
-        const statusText = document.getElementById('status-text');
-        
-        // 1. Show Compiler Overlay
-        overlay.style.display = 'flex';
-        statusText.innerText = 'Analyzing source code...';
-        logTerminal('Build started...', 'info');
-
-        setTimeout(() => {
-            statusText.innerText = 'Linking libraries...';
+        function logToTerminal(msg, type = 'log') {
+            const div = document.createElement('div');
+            div.className = `log-entry log-${type}`;
+            div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
             
-            setTimeout(() => {
-                statusText.innerText = 'Optimizing bundle...';
-                
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                    executeCode();
-                }, 600);
-            }, 500);
-        }, 400);
-    }
+            // Limit log history to 100 entries to prevent the IDE itself from crashing
+            if (terminal.childNodes.length > 105) terminal.removeChild(terminal.childNodes[1]);
+        }
 
-    function executeCode() {
-        const code = editor.getValue();
-        const previewFrame = document.getElementById('preview-frame');
+        function runCode() {
+            const code = editor.getValue();
+            const preview = document.getElementById('preview');
+            terminal.innerHTML = '<div style="color: #888; margin-bottom: 10px;">-- CONSOLE LOGS --</div>';
 
-        // Logic to intercept logs
-        const interceptor = `
-            <script>
+            const interceptor = `<script>
                 (function() {
-                    const send = (type, args) => {
-                        window.parent.postMessage({
-                            type: 'compiler-log',
-                            logType: type,
-                            content: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
-                        }, '*');
-                    };
-                    console.log = (...args) => send('log', args);
-                    console.error = (...args) => send('error', args);
-                    console.info = (...args) => send('info', args);
-                    window.onerror = (m, u, l) => send('error', ["Runtime Error: " + m + " at line " + l]);
+                    const send = (type, msg) => window.parent.postMessage({type, msg}, '*');
+                    console.log = (...args) => send('log', args.join(' '));
+                    console.error = (...args) => send('error', args.join(' '));
+                    console.info = (...args) => send('info', args.join(' '));
                 })();
-            <\/script>
-        `;
+            <\/script>`;
 
-        const finalHtml = code.replace('<head>', '<head>' + interceptor);
-        const blob = new Blob([finalHtml], { type: 'text/html' });
-        previewFrame.src = URL.createObjectURL(blob);
-
-        logTerminal('Compilation successful. Deployment finished.', 'success');
-        logTerminal('---------------------------------------');
-    }
-
-    window.addEventListener('message', (e) => {
-        if (e.data.type === 'compiler-log') {
-            logTerminal(e.data.content, e.data.logType);
+            const finalHtml = code.includes('<head>') ? code.replace('<head>', '<head>' + interceptor) : interceptor + code;
+            const blob = new Blob([finalHtml], { type: 'text/html' });
+            preview.src = URL.createObjectURL(blob);
         }
-    });
 
-    // Ctrl+Enter to Build
-    window.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault();
-            startBuild();
-        }
-    });
-</script>
-
+        window.addEventListener('message', (e) => {
+            if (e.data.type) logToTerminal(e.data.msg, e.data.type);
+        });
+    </script>
 </body>
 </html>
